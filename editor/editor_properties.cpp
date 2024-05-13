@@ -48,6 +48,7 @@
 #include "editor/property_selector.h"
 #include "editor/scene_tree_dock.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/themes/editor_theme_manager.h"
 #include "scene/2d/gpu_particles_2d.h"
 #include "scene/3d/fog_volume.h"
 #include "scene/3d/gpu_particles_3d.h"
@@ -2024,6 +2025,7 @@ void EditorPropertyQuaternion::_custom_value_changed(double val) {
 	spin[1]->set_value_no_signal(temp_q.y);
 	spin[2]->set_value_no_signal(temp_q.z);
 	spin[3]->set_value_no_signal(temp_q.w);
+	_value_changed(-1, "");
 }
 
 void EditorPropertyQuaternion::_value_changed(double val, const String &p_name) {
@@ -3139,7 +3141,7 @@ void EditorPropertyResource::_resource_changed(const Ref<Resource> &p_resource) 
 	// Changing the value of Script-type exported variables of the main script should not trigger saving/reloading properties.
 	bool is_script = false;
 	Ref<Script> s = p_resource;
-	if (get_edited_object() && s.is_valid() && get_edited_property() == CoreStringNames::get_singleton()->_script) {
+	if (get_edited_object() && s.is_valid() && get_edited_property() == CoreStringName(script)) {
 		is_script = true;
 		InspectorDock::get_singleton()->store_script_properties(get_edited_object());
 		s->call("set_instance_base_type", get_edited_object()->get_class());
@@ -3218,42 +3220,6 @@ void EditorPropertyResource::_open_editor_pressed() {
 		// May clear the editor so do it deferred.
 		callable_mp(EditorNode::get_singleton(), &EditorNode::edit_item).bind(res.ptr(), this).call_deferred();
 	}
-}
-
-void EditorPropertyResource::_update_property_bg() {
-	if (!is_inside_tree()) {
-		return;
-	}
-
-	updating_theme = true;
-
-	begin_bulk_theme_override();
-	if (sub_inspector != nullptr) {
-		int count_subinspectors = 0;
-		Node *n = get_parent();
-		while (n) {
-			EditorInspector *ei = Object::cast_to<EditorInspector>(n);
-			if (ei && ei->is_sub_inspector()) {
-				count_subinspectors++;
-			}
-			n = n->get_parent();
-		}
-		count_subinspectors = MIN(15, count_subinspectors);
-
-		add_theme_color_override("property_color", get_theme_color(SNAME("sub_inspector_property_color"), EditorStringName(Editor)));
-		add_theme_style_override("bg_selected", get_theme_stylebox("sub_inspector_property_bg" + itos(count_subinspectors), EditorStringName(Editor)));
-		add_theme_style_override("bg", get_theme_stylebox("sub_inspector_property_bg" + itos(count_subinspectors), EditorStringName(Editor)));
-		add_theme_constant_override("v_separation", 0);
-	} else {
-		add_theme_color_override("property_color", get_theme_color(SNAME("property_color"), SNAME("EditorProperty")));
-		add_theme_style_override("bg_selected", get_theme_stylebox(SNAME("bg_selected"), SNAME("EditorProperty")));
-		add_theme_style_override("bg", get_theme_stylebox(SNAME("bg"), SNAME("EditorProperty")));
-		add_theme_constant_override("v_separation", get_theme_constant(SNAME("v_separation"), SNAME("EditorProperty")));
-	}
-	end_bulk_theme_override();
-
-	updating_theme = false;
-	queue_redraw();
 }
 
 void EditorPropertyResource::_update_preferred_shader() {
@@ -3362,12 +3328,10 @@ void EditorPropertyResource::update_property() {
 				sub_inspector->set_read_only(is_read_only());
 				sub_inspector->set_use_folding(is_using_folding());
 
-				sub_inspector_vbox = memnew(VBoxContainer);
-				sub_inspector_vbox->set_mouse_filter(MOUSE_FILTER_STOP);
-				add_child(sub_inspector_vbox);
-				set_bottom_editor(sub_inspector_vbox);
+				sub_inspector->set_mouse_filter(MOUSE_FILTER_STOP);
+				add_child(sub_inspector);
+				set_bottom_editor(sub_inspector);
 
-				sub_inspector_vbox->add_child(sub_inspector);
 				resource_picker->set_toggle_pressed(true);
 
 				Array editor_list;
@@ -3383,32 +3347,28 @@ void EditorPropertyResource::update_property() {
 					_open_editor_pressed();
 					opened_editor = true;
 				}
-
-				_update_property_bg();
 			}
 
 			if (res.ptr() != sub_inspector->get_edited_object()) {
 				sub_inspector->edit(res.ptr());
+				_update_property_bg();
 			}
 
 		} else {
 			if (sub_inspector) {
 				set_bottom_editor(nullptr);
-				memdelete(sub_inspector_vbox);
+				memdelete(sub_inspector);
 				sub_inspector = nullptr;
-				sub_inspector_vbox = nullptr;
 
 				if (opened_editor) {
 					EditorNode::get_singleton()->hide_unused_editors();
 					opened_editor = false;
 				}
-
-				_update_property_bg();
 			}
 		}
 	}
 
-	resource_picker->set_edited_resource(res);
+	resource_picker->set_edited_resource_no_check(res);
 }
 
 void EditorPropertyResource::collapse_all_folding() {
@@ -3442,14 +3402,24 @@ void EditorPropertyResource::fold_resource() {
 	}
 }
 
+bool EditorPropertyResource::is_colored(ColorationMode p_mode) {
+	switch (p_mode) {
+		case COLORATION_CONTAINER_RESOURCE:
+			return sub_inspector != nullptr;
+		case COLORATION_RESOURCE:
+			return true;
+		case COLORATION_EXTERNAL:
+			if (sub_inspector) {
+				Resource *edited_resource = Object::cast_to<Resource>(sub_inspector->get_edited_object());
+				return edited_resource && !edited_resource->is_built_in();
+			}
+			break;
+	}
+	return false;
+}
+
 void EditorPropertyResource::_notification(int p_what) {
 	switch (p_what) {
-		case NOTIFICATION_THEME_CHANGED: {
-			if (!updating_theme) {
-				_update_property_bg();
-			}
-		} break;
-
 		case NOTIFICATION_EXIT_TREE: {
 			const EditorInspector *ei = get_parent_inspector();
 			if (ei && !ei->is_main_editor_inspector()) {
@@ -3461,6 +3431,7 @@ void EditorPropertyResource::_notification(int p_what) {
 
 EditorPropertyResource::EditorPropertyResource() {
 	use_sub_inspector = bool(EDITOR_GET("interface/inspector/open_resources_in_current_inspector"));
+	has_borders = true;
 }
 
 ////////////// DEFAULT PLUGIN //////////////////////
@@ -3932,6 +3903,11 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 		case Variant::PACKED_COLOR_ARRAY: {
 			EditorPropertyArray *editor = memnew(EditorPropertyArray);
 			editor->setup(Variant::PACKED_COLOR_ARRAY, p_hint_text);
+			return editor;
+		} break;
+		case Variant::PACKED_VECTOR4_ARRAY: {
+			EditorPropertyArray *editor = memnew(EditorPropertyArray);
+			editor->setup(Variant::PACKED_VECTOR4_ARRAY, p_hint_text);
 			return editor;
 		} break;
 		default: {

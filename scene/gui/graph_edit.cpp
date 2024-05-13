@@ -501,7 +501,7 @@ void GraphEdit::_graph_element_resize_request(const Vector2 &p_new_minsize, Node
 	// Snap the new size to the grid if snapping is enabled.
 	Vector2 new_size = p_new_minsize;
 	if (snapping_enabled ^ Input::get_singleton()->is_key_pressed(Key::CTRL)) {
-		new_size = new_size.snapped(Vector2(snapping_distance, snapping_distance));
+		new_size = new_size.snappedf(snapping_distance);
 	}
 
 	// Disallow resizing the frame to a size smaller than the minimum size of the attached nodes.
@@ -851,7 +851,7 @@ void GraphEdit::_set_position_of_frame_attached_nodes(GraphFrame *p_frame, const
 
 		Vector2 pos = (attached_node->get_drag_from() * zoom + drag_accum) / zoom;
 		if (snapping_enabled ^ Input::get_singleton()->is_key_pressed(Key::CTRL)) {
-			pos = pos.snapped(Vector2(snapping_distance, snapping_distance));
+			pos = pos.snappedf(snapping_distance);
 		}
 
 		// Recursively move graph frames.
@@ -1059,7 +1059,7 @@ void GraphEdit::_top_connection_layer_input(const Ref<InputEvent> &p_ev) {
 						port_size.height = MAX(port_size.height, child ? child->get_size().y : 0);
 
 						int type = graph_node->get_output_port_type(j);
-						if ((type == connecting_type ||
+						if ((type == connecting_type || graph_node->is_ignoring_valid_connection_type() ||
 									valid_connection_types.has(ConnectionType(type, connecting_type))) &&
 								is_in_output_hotzone(graph_node, j, mpos, port_size)) {
 							if (!is_node_hover_valid(graph_node->get_name(), j, connecting_from_node, connecting_from_port_index)) {
@@ -1084,7 +1084,7 @@ void GraphEdit::_top_connection_layer_input(const Ref<InputEvent> &p_ev) {
 						port_size.height = MAX(port_size.height, child ? child->get_size().y : 0);
 
 						int type = graph_node->get_input_port_type(j);
-						if ((type == connecting_type || valid_connection_types.has(ConnectionType(connecting_type, type))) &&
+						if ((type == connecting_type || graph_node->is_ignoring_valid_connection_type() || valid_connection_types.has(ConnectionType(connecting_type, type))) &&
 								is_in_input_hotzone(graph_node, j, mpos, port_size)) {
 							if (!is_node_hover_valid(connecting_from_node, connecting_from_port_index, graph_node->get_name(), j)) {
 								continue;
@@ -1117,6 +1117,8 @@ void GraphEdit::_top_connection_layer_input(const Ref<InputEvent> &p_ev) {
 					emit_signal(SNAME("connection_from_empty"), connecting_from_node, connecting_from_port_index, mb->get_position());
 				}
 			}
+		} else {
+			set_selected(get_node_or_null(NodePath(connecting_from_node)));
 		}
 
 		if (connecting) {
@@ -1636,12 +1638,12 @@ void GraphEdit::_draw_grid() {
 
 void GraphEdit::set_selected(Node *p_child) {
 	for (int i = get_child_count() - 1; i >= 0; i--) {
-		GraphNode *graph_node = Object::cast_to<GraphNode>(get_child(i));
-		if (!graph_node) {
+		GraphElement *graph_element = Object::cast_to<GraphElement>(get_child(i));
+		if (!graph_element) {
 			continue;
 		}
 
-		graph_node->set_selected(graph_node == p_child);
+		graph_element->set_selected(graph_element == p_child);
 	}
 }
 
@@ -1678,7 +1680,7 @@ void GraphEdit::gui_input(const Ref<InputEvent> &p_ev) {
 				// Snapping can be toggled temporarily by holding down Ctrl.
 				// This is done here as to not toggle the grid when holding down Ctrl.
 				if (snapping_enabled ^ Input::get_singleton()->is_key_pressed(Key::CMD_OR_CTRL)) {
-					pos = pos.snapped(Vector2(snapping_distance, snapping_distance));
+					pos = pos.snappedf(snapping_distance);
 				}
 
 				graph_element->set_position_offset(pos);

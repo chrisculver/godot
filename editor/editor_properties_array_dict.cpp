@@ -39,7 +39,9 @@
 #include "editor/gui/editor_spin_slider.h"
 #include "editor/inspector_dock.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/themes/editor_theme_manager.h"
 #include "scene/gui/button.h"
+#include "scene/gui/margin_container.h"
 #include "scene/resources/packed_scene.h"
 
 bool EditorPropertyArrayObject::_set(const StringName &p_name, const Variant &p_value) {
@@ -352,8 +354,7 @@ void EditorPropertyArray::update_property() {
 		updating = true;
 
 		if (!container) {
-			container = memnew(MarginContainer);
-			container->set_theme_type_variation("MarginContainer4px");
+			container = memnew(PanelContainer);
 			container->set_mouse_filter(MOUSE_FILTER_STOP);
 			add_child(container);
 			set_bottom_editor(container);
@@ -814,6 +815,10 @@ void EditorPropertyArray::_reorder_button_up() {
 	_page_changed(page_index);
 }
 
+bool EditorPropertyArray::is_colored(ColorationMode p_mode) {
+	return p_mode == COLORATION_CONTAINER_RESOURCE;
+}
+
 void EditorPropertyArray::_bind_methods() {
 }
 
@@ -839,6 +844,7 @@ EditorPropertyArray::EditorPropertyArray() {
 	subtype = Variant::NIL;
 	subtype_hint = PROPERTY_HINT_NONE;
 	subtype_hint_string = "";
+	has_borders = true;
 }
 
 ///////////////////// DICTIONARY ///////////////////////////
@@ -973,8 +979,7 @@ void EditorPropertyDictionary::update_property() {
 		updating = true;
 
 		if (!container) {
-			container = memnew(MarginContainer);
-			container->set_theme_type_variation("MarginContainer4px");
+			container = memnew(PanelContainer);
 			container->set_mouse_filter(MOUSE_FILTER_STOP);
 			add_child(container);
 			set_bottom_editor(container);
@@ -996,7 +1001,7 @@ void EditorPropertyDictionary::update_property() {
 
 			add_panel = memnew(PanelContainer);
 			property_vbox->add_child(add_panel);
-			add_panel->add_theme_style_override(SNAME("panel"), get_theme_stylebox(SNAME("DictionaryAddItem"), EditorStringName(EditorStyles)));
+			add_panel->add_theme_style_override(SNAME("panel"), get_theme_stylebox(SNAME("DictionaryAddItem")));
 			VBoxContainer *add_vbox = memnew(VBoxContainer);
 			add_panel->add_child(add_vbox);
 
@@ -1092,6 +1097,7 @@ void EditorPropertyDictionary::_notification(int p_what) {
 
 			if (button_add_item) {
 				button_add_item->set_icon(get_editor_theme_icon(SNAME("Add")));
+				add_panel->add_theme_style_override(SNAME("panel"), get_theme_stylebox(SNAME("DictionaryAddItem")));
 			}
 		} break;
 	}
@@ -1126,6 +1132,10 @@ void EditorPropertyDictionary::_page_changed(int p_page) {
 void EditorPropertyDictionary::_bind_methods() {
 }
 
+bool EditorPropertyDictionary::is_colored(ColorationMode p_mode) {
+	return p_mode == COLORATION_CONTAINER_RESOURCE;
+}
+
 EditorPropertyDictionary::EditorPropertyDictionary() {
 	object.instantiate();
 	page_length = int(EDITOR_GET("interface/inspector/max_array_dictionary_items_per_page"));
@@ -1145,6 +1155,7 @@ EditorPropertyDictionary::EditorPropertyDictionary() {
 	add_child(change_type);
 	change_type->connect("id_pressed", callable_mp(this, &EditorPropertyDictionary::_change_type_menu));
 	changing_type_index = -1;
+	has_borders = true;
 }
 
 ///////////////////// LOCALIZABLE STRING ///////////////////////////

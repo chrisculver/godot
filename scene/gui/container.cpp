@@ -86,10 +86,10 @@ void Container::_sort_children() {
 	}
 
 	notification(NOTIFICATION_PRE_SORT_CHILDREN);
-	emit_signal(SceneStringNames::get_singleton()->pre_sort_children);
+	emit_signal(SceneStringName(pre_sort_children));
 
 	notification(NOTIFICATION_SORT_CHILDREN);
-	emit_signal(SceneStringNames::get_singleton()->sort_children);
+	emit_signal(SceneStringName(sort_children));
 	pending_sort = false;
 }
 
@@ -139,6 +139,14 @@ void Container::queue_sort() {
 
 	callable_mp(this, &Container::_sort_children).call_deferred();
 	pending_sort = true;
+}
+
+Control *Container::as_sortable_control(Node *p_node) const {
+	Control *c = Object::cast_to<Control>(p_node);
+	if (!c || !c->is_visible_in_tree() || c->is_set_as_top_level()) {
+		return nullptr;
+	}
+	return c;
 }
 
 Vector<int> Container::get_allowed_size_flags_horizontal() const {

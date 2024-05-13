@@ -548,8 +548,13 @@ void AnimationPlayerEditor::_animation_name_edited() {
 		} break;
 
 		case TOOL_NEW_ANIM: {
+			String current = animation->get_item_text(animation->get_selected());
+			Ref<Animation> current_anim = player->get_animation(current);
 			Ref<Animation> new_anim = Ref<Animation>(memnew(Animation));
 			new_anim->set_name(new_name);
+			if (current_anim.is_valid()) {
+				new_anim->set_step(current_anim->get_step());
+			}
 			String library_name;
 			Ref<AnimationLibrary> al;
 			library_name = library->get_item_metadata(library->get_selected());
@@ -979,12 +984,12 @@ void AnimationPlayerEditor::_update_animation_list_icons() {
 
 		Ref<Texture2D> icon;
 		if (anim_name == player->get_autoplay()) {
-			if (anim_name == SceneStringNames::get_singleton()->RESET) {
+			if (anim_name == SceneStringName(RESET)) {
 				icon = autoplay_reset_icon;
 			} else {
 				icon = autoplay_icon;
 			}
-		} else if (anim_name == SceneStringNames::get_singleton()->RESET) {
+		} else if (anim_name == SceneStringName(RESET)) {
 			icon = reset_icon;
 		}
 
@@ -1020,8 +1025,7 @@ void AnimationPlayerEditor::_update_name_dialog_library_dropdown() {
 	}
 
 	int current_lib_id = index_offset; // Don't default to [Global] if it doesn't exist yet.
-	for (int i = 0; i < libraries.size(); i++) {
-		StringName library_name = libraries[i];
+	for (const StringName &library_name : libraries) {
 		if (!EditorNode::get_singleton()->is_resource_read_only(player->get_animation_library(library_name))) {
 			library->add_item((library_name == StringName()) ? String(TTR("[Global]")) : String(library_name));
 			library->set_item_metadata(valid_library_count, String(library_name));
@@ -1038,8 +1042,7 @@ void AnimationPlayerEditor::_update_name_dialog_library_dropdown() {
 	// one which isn't a read-only library.
 	bool auto_assigning_non_global_library = false;
 	if (current_library_name == StringName() && valid_library_count > 0) {
-		for (int i = 0; i < libraries.size(); i++) {
-			StringName library_name = libraries[i];
+		for (const StringName &library_name : libraries) {
 			if (!EditorNode::get_singleton()->is_resource_read_only(player->get_animation_library(library_name))) {
 				current_library_name = library_name;
 				current_lib_id = 0;
@@ -1456,7 +1459,7 @@ void AnimationPlayerEditor::_onion_skinning_menu(int p_option) {
 			onion.enabled = !onion.enabled;
 
 			if (onion.enabled) {
-				if (get_player() && !get_player()->has_animation(SceneStringNames::get_singleton()->RESET)) {
+				if (get_player() && !get_player()->has_animation(SceneStringName(RESET))) {
 					EditorNode::get_singleton()->show_warning(TTR("Onion skinning requires a RESET animation."));
 				}
 				_start_onion_skinning(); // It will check for RESET animation anyway.
@@ -1589,7 +1592,7 @@ void AnimationPlayerEditor::_prepare_onion_layers_1() {
 		return;
 	}
 
-	if (!onion.enabled || !is_visible() || !get_player() || !get_player()->has_animation(SceneStringNames::get_singleton()->RESET)) {
+	if (!onion.enabled || !is_visible() || !get_player() || !get_player()->has_animation(SceneStringName(RESET))) {
 		_stop_onion_skinning();
 		return;
 	}
@@ -1780,7 +1783,7 @@ void AnimationPlayerEditor::_prepare_onion_layers_2_epilog() {
 }
 
 void AnimationPlayerEditor::_start_onion_skinning() {
-	if (get_player() && !get_player()->has_animation(SceneStringNames::get_singleton()->RESET)) {
+	if (get_player() && !get_player()->has_animation(SceneStringName(RESET))) {
 		onion.enabled = false;
 		onion_toggle->set_pressed_no_signal(false);
 		return;

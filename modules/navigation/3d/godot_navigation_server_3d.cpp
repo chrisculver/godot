@@ -136,7 +136,7 @@ bool GodotNavigationServer3D::map_is_active(RID p_map) const {
 	NavMap *map = map_owner.get_or_null(p_map);
 	ERR_FAIL_NULL_V(map, false);
 
-	return active_maps.find(map) >= 0;
+	return active_maps.has(map);
 }
 
 COMMAND_2(map_set_up, RID, p_map, Vector3, p_up) {
@@ -1202,6 +1202,11 @@ COMMAND_1(free, RID, p_object) {
 	} else if (obstacle_owner.owns(p_object)) {
 		internal_free_obstacle(p_object);
 
+#ifndef _3D_DISABLED
+	} else if (navmesh_generator_3d && navmesh_generator_3d->owns(p_object)) {
+		navmesh_generator_3d->free(p_object);
+#endif // _3D_DISABLED
+
 	} else {
 		ERR_PRINT("Attempted to free a NavigationServer RID that did not exist (or was already freed).");
 	}
@@ -1426,6 +1431,23 @@ PathQueryResult GodotNavigationServer3D::_query_path(const PathQueryParameters &
 	// add path stats
 
 	return r_query_result;
+}
+
+RID GodotNavigationServer3D::source_geometry_parser_create() {
+#ifndef _3D_DISABLED
+	if (navmesh_generator_3d) {
+		return navmesh_generator_3d->source_geometry_parser_create();
+	}
+#endif // _3D_DISABLED
+	return RID();
+}
+
+void GodotNavigationServer3D::source_geometry_parser_set_callback(RID p_parser, const Callable &p_callback) {
+#ifndef _3D_DISABLED
+	if (navmesh_generator_3d) {
+		navmesh_generator_3d->source_geometry_parser_set_callback(p_parser, p_callback);
+	}
+#endif // _3D_DISABLED
 }
 
 Vector<Vector3> GodotNavigationServer3D::simplify_path(const Vector<Vector3> &p_path, real_t p_epsilon) {

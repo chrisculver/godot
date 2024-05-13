@@ -415,7 +415,7 @@ Size2i Window::_clamp_limit_size(const Size2i &p_limit_size) {
 	if (max_window_size != Size2i()) {
 		return p_limit_size.clamp(Vector2i(), max_window_size);
 	} else {
-		return p_limit_size.max(Vector2i());
+		return p_limit_size.maxi(0);
 	}
 }
 
@@ -846,7 +846,7 @@ void Window::set_visible(bool p_visible) {
 		focused = false;
 	}
 	notification(NOTIFICATION_VISIBILITY_CHANGED);
-	emit_signal(SceneStringNames::get_singleton()->visibility_changed);
+	emit_signal(SceneStringName(visibility_changed));
 
 	RS::get_singleton()->viewport_set_active(get_viewport_rid(), visible);
 
@@ -1036,7 +1036,7 @@ void Window::_update_window_size() {
 	}
 
 	if (embedder) {
-		size = size.max(Size2i(1, 1));
+		size = size.maxi(1);
 
 		embedder->_sub_window_update(this);
 	} else if (window_id != DisplayServer::INVALID_WINDOW_ID) {
@@ -1215,10 +1215,10 @@ void Window::set_force_native(bool p_force_native) {
 	if (force_native == p_force_native) {
 		return;
 	}
-	force_native = p_force_native;
 	if (is_visible() && !is_in_edited_scene_root()) {
-		WARN_PRINT("Can't change \"force_native\" while a window is displayed. Consider hiding window before changing this value.");
+		ERR_FAIL_MSG("Can't change \"force_native\" while a window is displayed. Consider hiding window before changing this value.");
 	}
+	force_native = p_force_native;
 }
 
 bool Window::get_force_native() const {
@@ -1321,7 +1321,7 @@ void Window::_notification(int p_what) {
 			}
 			if (visible) {
 				notification(NOTIFICATION_VISIBILITY_CHANGED);
-				emit_signal(SceneStringNames::get_singleton()->visibility_changed);
+				emit_signal(SceneStringName(visibility_changed));
 				RS::get_singleton()->viewport_set_active(get_viewport_rid(), true);
 			}
 
@@ -1337,7 +1337,7 @@ void Window::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
-			emit_signal(SceneStringNames::get_singleton()->theme_changed);
+			emit_signal(SceneStringName(theme_changed));
 			_invalidate_theme_cache();
 			_update_theme_item_cache();
 		} break;
@@ -1404,11 +1404,11 @@ void Window::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_VP_MOUSE_ENTER: {
-			emit_signal(SceneStringNames::get_singleton()->mouse_entered);
+			emit_signal(SceneStringName(mouse_entered));
 		} break;
 
 		case NOTIFICATION_VP_MOUSE_EXIT: {
-			emit_signal(SceneStringNames::get_singleton()->mouse_exited);
+			emit_signal(SceneStringName(mouse_exited));
 		} break;
 	}
 }
@@ -1579,6 +1579,7 @@ bool Window::_can_consume_input_events() const {
 }
 
 void Window::_window_input(const Ref<InputEvent> &p_ev) {
+	ERR_MAIN_THREAD_GUARD;
 	if (EngineDebugger::is_active()) {
 		// Quit from game window using the stop shortcut (F8 by default).
 		// The custom shortcut is provided via environment variable when running from the editor.
@@ -1621,7 +1622,7 @@ void Window::_window_input(const Ref<InputEvent> &p_ev) {
 	_input_from_window(p_ev);
 
 	if (p_ev->get_device() != InputEvent::DEVICE_ID_INTERNAL && is_inside_tree()) {
-		emit_signal(SceneStringNames::get_singleton()->window_input, p_ev);
+		emit_signal(SceneStringName(window_input), p_ev);
 	}
 
 	if (is_inside_tree()) {

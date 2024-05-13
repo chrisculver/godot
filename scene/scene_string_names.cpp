@@ -63,7 +63,7 @@ SceneStringNames::SceneStringNames() {
 	RESET = StaticCString::create("RESET");
 
 	pose_updated = StaticCString::create("pose_updated");
-	bone_pose_changed = StaticCString::create("bone_pose_changed");
+	skeleton_updated = StaticCString::create("skeleton_updated");
 	bone_enabled_changed = StaticCString::create("bone_enabled_changed");
 	show_rest_only_changed = StaticCString::create("show_rest_only_changed");
 
@@ -196,7 +196,7 @@ SceneStringNames::SceneStringNames() {
 	// Audio bus name.
 	Master = StaticCString::create("Master");
 
-	_default = StaticCString::create("default");
+	default_ = StaticCString::create("default");
 
 	_window_group = StaticCString::create("_window_group");
 	_window_input = StaticCString::create("_window_input");
